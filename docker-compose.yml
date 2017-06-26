@@ -1,5 +1,5 @@
 #!/usr/local/bin/docker-compose -f
-asterisk14:
+orderflowers:
   restart: always
   build: .
   env_file: lex.env
@@ -10,3 +10,6 @@ asterisk14:
     SIP_LISTEN_PORT: "5060"
     RTP_PORT_RANGE_START: "11000"
     RTP_PORT_RANGE_END: "11100"
+    LEX_BOT_NAME: "OrderFlowers"
+    LEX_BOT_ALIAS: "POC"
+    POLLY_VOICE_ID: "Salli"
