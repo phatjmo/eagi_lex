@@ -1,0 +1,12 @@
+#!/usr/local/bin/docker-compose -f
+asterisk14:
+  restart: always
+  build: .
+  env_file: lex.env
+  ports:
+  - "5060:5060"
+  - "11000-11100/udp:11000-11100/udp"
+  environment:
+    SIP_LISTEN_PORT: "5060"
+    RTP_PORT_RANGE_START: "11000"
+    RTP_PORT_RANGE_END: "11100"
