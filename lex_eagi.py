@@ -177,7 +177,7 @@ def startAGI():
   agi.stream_file(bytes_to_file(os.read(AUDIO_FD, 320000)))
   agi.stream_file('spy-jingle')
   while dialogState not in PERSIST_DIALOG:
-    audio_in = os.read(AUDIO_FD, 160000)
+    # audio_in = os.read(AUDIO_FD, 160000)
     # audio_in = wave.open(AUDIO_FD, 'r') # wave library wave_read reader...
     try:
       agi.verbose("Connecting to: %s" % (LEX))
@@ -189,7 +189,7 @@ def startAGI():
           # sessionAttributes=serializeSessionAttributes(),
           accept=ACCEPT,
           # inputStream=audio_in.readframes(10) # I really don't know how many frames to check for!
-          inputStream=audio_in
+          inputStream=os.read(AUDIO_FD, 320000)
       )
       # Expecting:
       # {
