@@ -5,9 +5,11 @@ from asterisk.agi import *
 import os
 import io
 import wave
+import audioop
 import base64
 import json
 import boto3
+# import speech_recognition as sr
 from time import sleep
 from botocore.exceptions import BotoCoreError, ClientError
 from tempfile import gettempdir, mkstemp
@@ -28,8 +30,9 @@ AUDIO_FD = 3
 BOT_NAME = os.getenv('LEX_BOT_NAME')
 BOT_ALIAS = os.getenv('LEX_BOT_ALIAS') # Really not sure what to put here yet...
 CONTENT_TYPE = 'audio/l16; rate=16000; channels=1'
+#CONTENT_TYPE = 'audio/l16; rate=8000; channels=1'
 ACCEPT = 'audio/pcm'
-PERSIST_DIALOG = ['ElicitIntent', 'ConfirmIntent', 'ElicitSlot']
+PERSIST_DIALOG = ['BeginInteraction', 'ElicitIntent', 'ConfirmIntent', 'ElicitSlot']
 # Polly Params
 POLLY_OUTPUT_FORMAT = "pcm"
 POLLY_VOICE_ID = os.getenv('POLLY_VOICE_ID') # "salli"
@@ -47,10 +50,26 @@ HTTP_STATUS = {"OK": ResponseStatus(code=200, message="OK"),
 LEX = boto3.client('lex-runtime')
 POLLY = boto3.client('polly')
 
+SAMPLE_WIDTH, SAMPLE_RATE = 2.0, 18000.0 # 16-bit, 48kHz PCM audio
 
 def serializeSessionAttributes():
   # Important stuff will need to go here regarding the session attributes
   return base64.b64encode(json.dumps({}))
+
+def convert_to_lex(raw_input):
+  test_wav = mkstemp(suffix=".wav")[1]
+  writetemp = wave.open(test_wav,'wb')
+  writetemp.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
+  converted = audioop.ratecv(raw_input, 2, 1, 8000, 16000, None)
+  writetemp.writeframesraw(converted[0])
+  writetemp.close()
+  readtemp = wave.open(test_wav,'rb')
+  frames = readtemp.readframes(readtemp.getnframes())
+  # return audioop.tomono(converted[0], 2, 1, 0)
+  readtemp.close()
+  os.remove(test_wav)
+  return frames
+  
 
 def stream_to_file(audio_stream):
   with closing(audio_stream) as stream:
@@ -152,7 +171,7 @@ def read_text(text):
 
 
 def startAGI():
-  dialogState = ""
+  dialogState = "BeginInteraction"
   agi = AGI()
   agi.verbose("Lex EAGI script started...")
   ani = agi.env['agi_callerid']
@@ -163,7 +182,7 @@ def startAGI():
   agi.verbose("Call answered from: %s to %s" % (ani, did))
   # try:
   agi.stream_file(read_text(POLLY_GREETING))
-  os.read(AUDIO_FD, 320000)
+  # os.read(AUDIO_FD, 320000)
 
   # except Exception as e:
   #   agi.verbose(e)
@@ -172,15 +191,30 @@ def startAGI():
   #   exit(1)
   agi.verbose("Streamed TTS: %s" % (POLLY_GREETING))
   agi.verbose("Attempting to play back FD %d audio" %(AUDIO_FD))
+  # grab_intent = os.fdopen(AUDIO_FD, 'rb')
   # audio_in = os.read(AUDIO_FD, 80000)
-  agi.stream_file('spy-jingle')
-  agi.stream_file(bytes_to_file(os.read(AUDIO_FD, 320000)))
-  agi.stream_file('spy-jingle')
+  # agi.stream_file('spy-jingle')
+  # agi.stream_file(bytes_to_file(grab_intent.read(65000)))
+  # grab_intent.read(9999999)
+  # agi.stream_file('spy-jingle')
   while dialogState in PERSIST_DIALOG:
     # audio_in = os.read(AUDIO_FD, 160000)
     # audio_in = wave.open(AUDIO_FD, 'r') # wave library wave_read reader...
+    test = os.read(AUDIO_FD, 1024000) # try to force FD to end...
     try:
-      agi.verbose("Connecting to: %s" % (LEX))
+      # os.write(AUDIO_FD+1, "") # See if the write is one up...
+
+      # afile = AudioRawStream(os.fdopen(3, 'rb'), SAMPLE_WIDTH, SAMPLE_RATE)
+      test = os.read(AUDIO_FD, 1024000)
+      sleep(4)
+      # agi.verbose("Connecting to: %s" % (LEX))
+      # os.lseek(AUDIO_FD, 0, os.SEEK_END)
+      # grab_intent = os.read(AUDIO_FD, 1024000)
+      # agi.verbose("Length of intent: %d" % (grab_intent.__len__()))
+      # playback intent
+      # agi.stream_file(bytes_to_file(grab_intent))
+      test = os.read(AUDIO_FD, 1024000)
+      agi.stream_file(bytes_to_file(test))
       response = LEX.post_content(
           botName=BOT_NAME,
           botAlias=BOT_ALIAS,
@@ -189,7 +223,8 @@ def startAGI():
           # sessionAttributes=serializeSessionAttributes(),
           accept=ACCEPT,
           # inputStream=audio_in.readframes(10) # I really don't know how many frames to check for!
-          inputStream=os.read(AUDIO_FD, 320000)
+          inputStream=convert_to_lex(test)
+          # inputStream=grab_intent.read(65000)
       )
       # Expecting:
       # {
@@ -206,9 +241,9 @@ def startAGI():
       # print response
       dialogState = response.get("dialogState")
       agi.stream_file(stream_to_file(response.get("audioStream")))
-      agi.verbose(dialogState)
-      agi.verbose(response.get("message"))
-      agi.verbose(response.get("inputTranscript"))
+      agi.verbose("Interaction status: %s" % (dialogState))
+      agi.verbose("Lex says: %s" % (response.get("message")))
+      agi.verbose("You said: %s" % (response.get("inputTranscript")))
     except (BotoCoreError, ClientError) as err:
       # The service returned an error
       # raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"],
@@ -216,6 +251,7 @@ def startAGI():
       agi.verbose("Could not engage Lex because of: %s" % (err))
       agi.stream_file('cannot-complete-network-error')
       agi.hangup()
+      grab_intent.close()
       exit(1)
 # Extras
   # agi.stream_file('cannot-complete-network-error')
@@ -226,7 +262,9 @@ def startAGI():
   # agi.set_variable("CAMPAIGN", campaign)
   # agi.set_variable("EMPLOYEE", empID) 
 
-  agi.verbose("Lex interaction complete " % (response))
+  agi.verbose("Lex interaction complete")
+  agi.hangup()
+  grab_intent.close()
   exit()
 
 
