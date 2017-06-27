@@ -1,20 +1,29 @@
 #! /bin/bash
-
+echo 'Setting up environment and running Asterisk!'
 # If there are environment files, source them
-if [ -e "/tmp/environments/*"]
-then
-  for $source in /tmp/environments/* ; do
+# if [ -e "/tmp/environments/*"]
+# then
+  for source in /tmp/environments/*.env ; do
+    echo "Sourcing $source"
     . $source
   done
-fi
+# fi
 
-if [ -e "/tmp/confs/*.conf" ]
-then
+# if [ -e /tmp/confs/*.conf ]
+# then
   # run envsubst on custom confs
-  for template in /tmp/confs/*.conf ; do
-  # file=$(echo $template | sed -e 's/\.template$//')
-  envsubst < $template > /etc/asterisk/$template
+  cd /tmp/confs/
+  for template in *.conf ; do
+    echo "Deleting existing $template from /etc/asterisk"
+    rm -f /etc/asterisk/$template
+    # file=$(echo $template | sed -e 's/\.template$//')
+    echo "Substituting variables in $template"
+    # Must put variables that need to be replaced in asterisk conf files in confvars.csv
+    # Otherwise extensions.conf variables get blanked
+    envsubst $(cat /confvars.csv) < $template > /etc/asterisk/$template
+    echo "Fixing Asterisk variables in $template"
+    # cp $template /etc/asterisk
   done
-fi
+# fi
 
 /usr/sbin/asterisk -fvvvvv
