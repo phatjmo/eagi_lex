@@ -176,7 +176,7 @@ def startAGI():
   agi.stream_file('spy-jingle')
   agi.stream_file(bytes_to_file(os.read(AUDIO_FD, 320000)))
   agi.stream_file('spy-jingle')
-  while dialogState not in PERSIST_DIALOG:
+  while dialogState in PERSIST_DIALOG:
     # audio_in = os.read(AUDIO_FD, 160000)
     # audio_in = wave.open(AUDIO_FD, 'r') # wave library wave_read reader...
     try:
@@ -208,6 +208,7 @@ def startAGI():
       agi.stream_file(stream_to_file(response.get("audioStream")))
       agi.verbose(dialogState)
       agi.verbose(response.get("message"))
+      agi.verbose(response.get("inputTranscript"))
     except (BotoCoreError, ClientError) as err:
       # The service returned an error
       # raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"],
@@ -224,6 +225,7 @@ def startAGI():
   # agi.set_callerid(outANI)
   # agi.set_variable("CAMPAIGN", campaign)
   # agi.set_variable("EMPLOYEE", empID) 
+
   agi.verbose("Lex interaction complete " % (response))
   exit()
 
