@@ -8,6 +8,7 @@ import wave
 import base64
 import json
 import boto3
+from time import sleep
 from botocore.exceptions import BotoCoreError, ClientError
 from tempfile import gettempdir, mkstemp
 """
@@ -48,7 +49,8 @@ POLLY = boto3.client('polly')
 
 
 def serializeSessionAttributes():
-  return base64.b64encode(json.dumps({})) # Important stuff will need to go here regarding the session attributes
+  # Important stuff will need to go here regarding the session attributes
+  return base64.b64encode(json.dumps({}))
 
 def stream_to_file(audio_stream):
   with closing(audio_stream) as stream:
@@ -70,6 +72,25 @@ def stream_to_file(audio_stream):
       # Could not write to file, exit gracefully
       # print error
       return 'cannot-complete-network-error'
+
+def bytes_to_file(audio_bytes):
+  output = mkstemp(suffix=".sln")
+  try:
+      # Open a file for writing the output as a binary stream
+      # return stream.read()
+    with open(output[1], 'wb') as file:
+      # with wave.open(output[1], 'w') as file:
+      # file.setnchannels(1)
+      # file.setsampwidth(2)
+      # file.setframerate(8000)
+      # file.writeframes(stream.read())
+      file.write(audio_bytes)
+    return os.path.splitext(output[1])[0]
+      # return output
+  except IOError as error:
+    # Could not write to file, exit gracefully
+    # print error
+    return 'cannot-complete-network-error'
 
 def read_text(text):
   """Handles routing for reading text (speech synthesis)"""
@@ -142,14 +163,21 @@ def startAGI():
   agi.verbose("Call answered from: %s to %s" % (ani, did))
   # try:
   agi.stream_file(read_text(POLLY_GREETING))
+  os.read(AUDIO_FD, 320000)
+
   # except Exception as e:
   #   agi.verbose(e)
   #   agi.stream_file('tt-somethingwrong')
   #   agi.hangup()
   #   exit(1)
   agi.verbose("Streamed TTS: %s" % (POLLY_GREETING))
+  agi.verbose("Attempting to play back FD %d audio" %(AUDIO_FD))
+  # audio_in = os.read(AUDIO_FD, 80000)
+  agi.stream_file('spy-jingle')
+  agi.stream_file(bytes_to_file(os.read(AUDIO_FD, 320000)))
+  agi.stream_file('spy-jingle')
   while dialogState not in PERSIST_DIALOG:
-    audio_in = os.read(AUDIO_FD, 80000)
+    audio_in = os.read(AUDIO_FD, 160000)
     # audio_in = wave.open(AUDIO_FD, 'r') # wave library wave_read reader...
     try:
       agi.verbose("Connecting to: %s" % (LEX))
@@ -158,7 +186,7 @@ def startAGI():
           botAlias=BOT_ALIAS,
           userId=ani,
           contentType=CONTENT_TYPE,
-          sessionAttributes=serializeSessionAttributes(),
+          # sessionAttributes=serializeSessionAttributes(),
           accept=ACCEPT,
           # inputStream=audio_in.readframes(10) # I really don't know how many frames to check for!
           inputStream=audio_in

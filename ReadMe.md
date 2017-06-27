@@ -2,6 +2,8 @@ This is an EAGI script written in Python to test interactions between AWS Lex an
 
 EAGI is used to collect audio input from file descriptor 3
 
+Permissions: Make sure your lex-exec-roll has permissions for polly:* so that you can synthesize speech. Even though the Bot may have been created with an IAM user that has polly:SynthesizeSpeech permissions, the bot will use lex-exec-roll which does not right out of the gate. Really annoying but Lex is still beta I guess.
+
 If you have additional variables that need to be replaced in the asterisk conf files, add them to confvars.csv,
 otherwise they will be ignored. This prevents shell formatted dialplan variables in extensions.conf from being blanked.
 
