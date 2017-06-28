@@ -78,14 +78,9 @@ def stream_to_file(audio_stream):
         # Open a file for writing the output as a binary stream
         # return stream.read()
       with open(output[1], 'wb') as file:
-        # with wave.open(output[1], 'w') as file:
-        # file.setnchannels(1)
-        # file.setsampwidth(2)
-        # file.setframerate(8000)
-        # file.writeframes(stream.read())
         file.write(stream.read())
 
-      return os.path.splitext(output[1])[0]
+      return output[1]
         # return output
     except IOError as error:
       # Could not write to file, exit gracefully
@@ -97,14 +92,9 @@ def bytes_to_file(audio_bytes):
   try:
       # Open a file for writing the output as a binary stream
       # return stream.read()
-    with open(output[1], 'wb') as file:
-      # with wave.open(output[1], 'w') as file:
-      # file.setnchannels(1)
-      # file.setsampwidth(2)
-      # file.setframerate(8000)
-      # file.writeframes(stream.read())
-      file.write(audio_bytes)
-    return os.path.splitext(output[1])[0]
+    with open(output[1], 'wb') as audio:
+      audio.write(audio_bytes)
+    return output[1]
       # return output
   except IOError as error:
     # Could not write to file, exit gracefully
@@ -114,21 +104,21 @@ def bytes_to_file(audio_bytes):
 def read_text(text):
   """Handles routing for reading text (speech synthesis)"""
   # Get the parameters from the query string
-  voiceId = POLLY_VOICE_ID
-  outputFormat = POLLY_OUTPUT_FORMAT
+  voice_id = POLLY_VOICE_ID
+  output_format = POLLY_OUTPUT_FORMAT
 
   # Validate the parameters, set error flag in case of unexpected
   # values
-  if len(text) == 0 or len(voiceId) == 0 or \
-    outputFormat not in AUDIO_FORMATS:
+  if len(text) == 0 or len(voice_id) == 0 or \
+    output_format not in AUDIO_FORMATS:
     raise HTTPStatusError(HTTP_STATUS["BAD_REQUEST"],
                           "Wrong parameters")
   else:
     try:
       # Request speech synthesis
       response = POLLY.synthesize_speech(Text=text,
-                                         VoiceId=voiceId,
-                                         OutputFormat=outputFormat)
+                                         VoiceId=voice_id,
+                                         OutputFormat=output_format)
     except (BotoCoreError, ClientError) as err:
       # The service returned an error
       raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"], str(err))
@@ -144,34 +134,16 @@ def read_text(text):
     # ensure the close method of the stream object will be called automatically
     # at the end of the with statement's scope.
     return stream_to_file(response["AudioStream"])
-    # with closing(response["AudioStream"]) as stream:
-    #   output = mkstemp(suffix=".sln16")
-    #   try:
-    #     # Open a file for writing the output as a binary stream
-    #     # return stream.read()
-    #     with open(output[1], 'wb') as file:
-    #     # with wave.open(output[1], 'w') as file:
-    #       # file.setnchannels(1)
-    #       # file.setsampwidth(2)
-    #       # file.setframerate(8000)
-    #       # file.writeframes(stream.read())
-    #       file.write(stream.read())
-    #     return os.path.splitext(output[1])[0]
-    #     # return output
-    #   except IOError as error:
-    #     # Could not write to file, exit gracefully
-    #     # print error
-    #     return 'cannot-complete-network-error'
-
   else:
-  # The response didn't contain audio data, exit gracefully
-    # print "Could not stream audio"
-    # sys.exit(-1)
+    # The response didn't contain audio data, exit gracefully
     return 'cannot-complete-as-dialed'
 
-
 def startAGI():
-  dialogState = "BeginInteraction"
+  """
+  Begin AGI Processing
+  """
+
+  dialog_state = "BeginInteraction"
   agi = AGI()
   agi.verbose("Lex EAGI script started...")
   ani = agi.env['agi_callerid']
@@ -181,40 +153,25 @@ def startAGI():
   agi.answer()
   agi.verbose("Call answered from: %s to %s" % (ani, did))
   # try:
-  agi.stream_file(read_text(POLLY_GREETING))
-  # os.read(AUDIO_FD, 320000)
-
-  # except Exception as e:
-  #   agi.verbose(e)
-  #   agi.stream_file('tt-somethingwrong')
-  #   agi.hangup()
-  #   exit(1)
+  greet_file = read_text(POLLY_GREETING)
+  agi.stream_file(os.path.splitext(greet_file)[0])
+  os.remove(greet_file)
   agi.verbose("Streamed TTS: %s" % (POLLY_GREETING))
-  agi.verbose("Attempting to play back FD %d audio" %(AUDIO_FD))
-  # grab_intent = os.fdopen(AUDIO_FD, 'rb')
-  # audio_in = os.read(AUDIO_FD, 80000)
-  # agi.stream_file('spy-jingle')
-  # agi.stream_file(bytes_to_file(grab_intent.read(65000)))
-  # grab_intent.read(9999999)
-  # agi.stream_file('spy-jingle')
-  while dialogState in PERSIST_DIALOG:
+  while dialog_state in PERSIST_DIALOG:
     # audio_in = os.read(AUDIO_FD, 160000)
     # audio_in = wave.open(AUDIO_FD, 'r') # wave library wave_read reader...
-    test = os.read(AUDIO_FD, 1024000) # try to force FD to end...
+    test = os.read(AUDIO_FD, 1024000) # clear buffer
     try:
       # os.write(AUDIO_FD+1, "") # See if the write is one up...
 
       # afile = AudioRawStream(os.fdopen(3, 'rb'), SAMPLE_WIDTH, SAMPLE_RATE)
-      test = os.read(AUDIO_FD, 1024000)
+      test = os.read(AUDIO_FD, 1024000) # clear buffer again
+      test = ""
       sleep(4)
-      # agi.verbose("Connecting to: %s" % (LEX))
-      # os.lseek(AUDIO_FD, 0, os.SEEK_END)
-      # grab_intent = os.read(AUDIO_FD, 1024000)
-      # agi.verbose("Length of intent: %d" % (grab_intent.__len__()))
-      # playback intent
-      # agi.stream_file(bytes_to_file(grab_intent))
-      test = os.read(AUDIO_FD, 1024000)
-      agi.stream_file(bytes_to_file(test))
+      intent = os.read(AUDIO_FD, 1024000) # grab buffer
+      intent_audio = bytes_to_file(intent)
+      agi.stream_file(os.path.splitext(intent_audio)[0]) # Playback to verify sample
+      os.remove(intent_audio)
       response = LEX.post_content(
           botName=BOT_NAME,
           botAlias=BOT_ALIAS,
@@ -222,9 +179,7 @@ def startAGI():
           contentType=CONTENT_TYPE,
           # sessionAttributes=serializeSessionAttributes(),
           accept=ACCEPT,
-          # inputStream=audio_in.readframes(10) # I really don't know how many frames to check for!
-          inputStream=convert_to_lex(test)
-          # inputStream=grab_intent.read(65000)
+          inputStream=convert_to_lex(intent)
       )
       # Expecting:
       # {
@@ -238,20 +193,18 @@ def startAGI():
       #     'inputTranscript': 'string',
       #     'audioStream': StreamingBody()
       # }
-      # print response
-      dialogState = response.get("dialogState")
-      agi.stream_file(stream_to_file(response.get("audioStream")))
-      agi.verbose("Interaction status: %s" % (dialogState))
+
+      dialog_state = response.get("dialogState")
+      response_audio = stream_to_file(response.get("audioStream"))
+      agi.stream_file(os.path.splitext(response_audio)[0])
+      os.remove(response_audio)
+      agi.verbose("Interaction status: %s" % (dialog_state))
       agi.verbose("Lex says: %s" % (response.get("message")))
       agi.verbose("You said: %s" % (response.get("inputTranscript")))
     except (BotoCoreError, ClientError) as err:
-      # The service returned an error
-      # raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"],
-      #                           str(err))
       agi.verbose("Could not engage Lex because of: %s" % (err))
       agi.stream_file('cannot-complete-network-error')
       agi.hangup()
-      grab_intent.close()
       exit(1)
 # Extras
   # agi.stream_file('cannot-complete-network-error')
@@ -260,11 +213,10 @@ def startAGI():
 
   # agi.set_callerid(outANI)
   # agi.set_variable("CAMPAIGN", campaign)
-  # agi.set_variable("EMPLOYEE", empID) 
+  # agi.set_variable("EMPLOYEE", empID)
 
   agi.verbose("Lex interaction complete")
   agi.hangup()
-  grab_intent.close()
   exit()
 
 
