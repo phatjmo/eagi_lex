@@ -11,10 +11,11 @@ If you are installing on an instance that already has credentials, ignore the fo
 In order for the script to function, you need to place your AWS credentials into an env file under environments/
 
 Format as:
-
+```
 export AWS_ACCESS_KEY_ID=<Your AWS Access Key Id>
 export AWS_SECRET_ACCESS_KEY=<Your AWS Secret Access Key>
 export AWS_SESSION_TOKEN=<Your AWS Session Token>
 export AWS_DEFAULT_REGION=<Region of deployment, but right now LEX only works in us-east-1>
+```
 
 Additional configuration documentation goes... here!
