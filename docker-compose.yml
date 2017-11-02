@@ -8,8 +8,8 @@ services:
       dockerfile: Dockerfile.awslex
     image: orderflowers:dev
     ports:
-    - "5060/udp:5060/udp"
-    - "11000-11100/udp:11000-11100/udp"
+    - "5060:5060/udp"
+    - "11000-11100:11000-11100/udp"
     environment:
       LEX_EAGI_SCRIPT: "/etc/asterisk/eagi/lex_eagi.py"
       SIP_LISTEN_PORT: "5060"
@@ -18,17 +18,17 @@ services:
       LEX_BOT_NAME: "OrderFlowers"
       LEX_BOT_ALIAS: "POC"
       POLLY_VOICE_ID: "Salli"
-  googletranscribe:
-    restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile.googleapi
-    image: googletranscribe:dev
-    ports:
-    - "5060/udp:5060/udp"
-    - "11000-11100/udp:11000-11100/udp"
-    environment:
-      LEX_EAGI_SCRIPT: "/etc/asterisk/eagi/googletranscribe.py"
-      SIP_LISTEN_PORT: "5060"
-      RTP_PORT_RANGE_START: "11000"
-      RTP_PORT_RANGE_END: "11100"
+  # googletranscribe:
+  #   restart: always
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.googleapi
+  #   image: googletranscribe:dev
+  #   ports:
+  #   - "5060/udp:5060/udp"
+  #   - "11000-11100/udp:11000-11100/udp"
+  #   environment:
+  #     LEX_EAGI_SCRIPT: "/etc/asterisk/eagi/googletranscribe.py"
+  #     SIP_LISTEN_PORT: "5060"
+  #     RTP_PORT_RANGE_START: "11000"
+  #     RTP_PORT_RANGE_END: "11100"
