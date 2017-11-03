@@ -10,6 +10,7 @@ services:
     ports:
     - "5060:5060/udp"
     - "11000-11100:11000-11100/udp"
+    network_mode: "host"
     environment:
       LEX_EAGI_SCRIPT: "/etc/asterisk/eagi/lex_eagi.py"
       SIP_LISTEN_PORT: "5060"
