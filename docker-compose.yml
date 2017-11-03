@@ -18,6 +18,8 @@ services:
       LEX_BOT_NAME: "OrderFlowers"
       LEX_BOT_ALIAS: "POC"
       POLLY_VOICE_ID: "Salli"
+      PUBLIC_IP: 192.168.42.219 # $DOCKER_HOST
+      LOCAL_NET: 172.0.0.0/8
   # googletranscribe:
   #   restart: always
   #   build:
